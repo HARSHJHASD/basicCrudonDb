@@ -1,6 +1,10 @@
+//for starting the server ....
 const express = require("express");
+// for connecting with dataabse without mongodb client
 const mongoose = require("mongoose");
+//this is for creating jwt token while user is logging in .....
 const jwt = require("jsonwebtoken");
+//this is for parsing the cookie which are were attached during login........
 const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const app = express();
@@ -71,16 +75,26 @@ function authenticateToken(req, res, next) {
   }
 
   jwt.verify(token, "your-secret-key", (err, decoded) => {
+    if (decoded) {
+      req.user = decoded;
+      console.log(req.user);
+      next();
+    }
     if (err) {
       return res.status(401).json({ message: "Unauthorized: Invalid token" });
     }
 
     // Attach the decoded user information to the request
-    req.user = decoded;
-    console.log(req.user);
-    next();
   });
 }
+
+app.get("/logout", authenticateToken, (req, res) => {
+  // Clear the authorization cookie
+  res.clearCookie("authorizationCookie");
+
+  // Optionally, you can redirect the user to a logout success page or another destination
+  res.redirect("/logout-success");
+});
 
 //getting all data from api......
 app.get("/task", authenticateToken, async (req, res) => {

@@ -1,8 +1,10 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const bodyParser = require("body-parser");
 const app = express();
+app.use(cookieParser());
 const secretKey = "your-secret-key";
 app.use(bodyParser.json());
 app.get("/", (request, response) => {
@@ -42,8 +44,46 @@ app.post("/signup", async (req, res, next) => {
   }
 });
 
+//login flow
+
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    const user = await User.findOne({ username, password });
+    if (user) {
+      const token = jwt.sign(
+        { id: user._id, username: user.username },
+        secretKey
+      );
+      res.cookie("authorizationCookie", token, { httpOnly: true });
+      res.json({ token: token, user: user });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+});
+
+function authenticateToken(req, res, next) {
+  const token = req.cookies.authorizationCookie;
+
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized: Missing token" });
+  }
+
+  jwt.verify(token, "your-secret-key", (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "Unauthorized: Invalid token" });
+    }
+
+    // Attach the decoded user information to the request
+    req.user = decoded;
+    console.log(req.user);
+    next();
+  });
+}
+
 //getting all data from api......
-app.get("/task", async (req, res) => {
+app.get("/task", authenticateToken, async (req, res) => {
   try {
     const tasks = await Task.find();
     res.status(200).json({
@@ -60,7 +100,7 @@ app.get("/task", async (req, res) => {
   }
 });
 
-app.get("/task/:TaskId", async (req, res, next) => {
+app.get("/task/:TaskId", authenticateToken, async (req, res, next) => {
   const id = req.params.TaskId;
   try {
     const response = await Task.findById(id);
@@ -71,7 +111,7 @@ app.get("/task/:TaskId", async (req, res, next) => {
 });
 
 //adding data to database......
-app.post("/taskadd", async (req, res, next) => {
+app.post("/taskadd", authenticateToken, async (req, res, next) => {
   try {
     const { taskName, description, dueDate, status } = req.body;
     const newTask = new Task({ taskName, description, dueDate, status });
@@ -93,42 +133,46 @@ app.post("/taskadd", async (req, res, next) => {
 // deleting from the databse...Task....
 
 // api for deleting task
-app.delete("/deleteTask/:deleteId", async (req, res, next) => {
-  const deleteId = req.params.deleteId;
+app.delete(
+  "/deleteTask/:deleteId",
+  authenticateToken,
+  async (req, res, next) => {
+    const deleteId = req.params.deleteId;
 
-  // Check if deleteId is a valid ObjectId (assuming MongoDB _id field)
-  if (!mongoose.Types.ObjectId.isValid(deleteId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid Task ID",
-    });
-  }
-  try {
-    const deletedTask = await Task.findById(deleteId);
-    const response = await Task.deleteOne({ _id: deleteId });
-    if (response.deletedCount === 1) {
-      res.status(200).json({
-        success: true,
-        message: "Task deleted SuccessFully",
-        deletedTask: deletedTask,
-      }); // 204 No Content for successful deletion
-    } else {
-      res.status(404).json({
+    // Check if deleteId is a valid ObjectId (assuming MongoDB _id field)
+    if (!mongoose.Types.ObjectId.isValid(deleteId)) {
+      return res.status(400).json({
         success: false,
-        message: "Task not found",
+        message: "Invalid Task ID",
       });
     }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
+    try {
+      const deletedTask = await Task.findById(deleteId);
+      const response = await Task.deleteOne({ _id: deleteId });
+      if (response.deletedCount === 1) {
+        res.status(200).json({
+          success: true,
+          message: "Task deleted SuccessFully",
+          deletedTask: deletedTask,
+        }); // 204 No Content for successful deletion
+      } else {
+        res.status(404).json({
+          success: false,
+          message: "Task not found",
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+        error: error.message,
+      });
+    }
   }
-});
+);
 
 //upating ........
-app.post("/updateTask/:taskId", async (req, res, next) => {
+app.post("/updateTask/:taskId", authenticateToken, async (req, res, next) => {
   const { taskName, description, dueDate, status } = req.body;
   const taskId = req.params.taskId;
 

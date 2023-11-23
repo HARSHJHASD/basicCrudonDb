@@ -1,7 +1,9 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 const bodyParser = require("body-parser");
 const app = express();
+const secretKey = "your-secret-key";
 app.use(bodyParser.json());
 app.get("/", (request, response) => {
   response.send({ message: "Hello from an Express API!" });
@@ -12,6 +14,32 @@ const Task = mongoose.model("Task", {
   description: String,
   dueDate: Date,
   status: String,
+});
+
+const User = mongoose.model("User", {
+  username: { type: String, unique: true },
+  password: String,
+});
+
+app.post("/signup", async (req, res, next) => {
+  // const payload = { username: "harshjha1234", password: "password123" };
+  const { username, password } = req.body;
+  console.log("request body is : ", req.body);
+  const payload = { username, password };
+  try {
+    const newUser = new User(payload);
+    await newUser.save();
+    res.status(200).json({
+      success: true,
+      message: "User Created Successfully",
+      user: newUser,
+    });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(400)
+      .json({ message: "Username already taken or invalid input" });
+  }
 });
 
 //getting all data from api......

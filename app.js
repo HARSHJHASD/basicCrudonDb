@@ -82,6 +82,7 @@ app.delete("/deleteTask/:deleteId", async (req, res, next) => {
       res.status(200).json({
         success: true,
         message: "Task deleted SuccessFully",
+        deletedTask: deletedTask,
       }); // 204 No Content for successful deletion
     } else {
       res.status(404).json({

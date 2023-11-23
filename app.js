@@ -4,17 +4,23 @@ const express = require("express");
 const mongoose = require("mongoose");
 //this is for creating jwt token while user is logging in .....
 const jwt = require("jsonwebtoken");
-//this is for parsing the cookie which are were attached during login........
+//this is for parsing the cookie which are were attached during login........and are coming back with each request of user...
 const cookieParser = require("cookie-parser");
+//this is used for parsing data from body
 const bodyParser = require("body-parser");
 const app = express();
+//syntax of cookiee parser..
 app.use(cookieParser());
+// this is secret key that will be used for verifying jwt token
 const secretKey = "your-secret-key";
 app.use(bodyParser.json());
+
+//handling route of home and sending some response based on that....
 app.get("/", (request, response) => {
   response.send({ message: "Hello from an Express API!" });
 });
 // Define a Task model
+// we have defined a model of task and if our code is connected to db  , so automatically a collection will be created
 const Task = mongoose.model("Task", {
   taskName: String,
   description: String,
@@ -22,6 +28,7 @@ const Task = mongoose.model("Task", {
   status: String,
 });
 
+// creating a user model
 const User = mongoose.model("User", {
   username: { type: String, unique: true },
   password: String,
@@ -59,7 +66,13 @@ app.post("/login", async (req, res) => {
         { id: user._id, username: user.username },
         secretKey
       );
-      res.cookie("authorizationCookie", token, { httpOnly: true });
+      const oneHourFromNow = new Date(Date.now() + 3600000); // 3600000 milliseconds = 1 hour
+
+      // Set the token as an HTTP-only cookie with an expiration time
+      res.cookie("authorizationCookie", token, {
+        httpOnly: true,
+        expires: oneHourFromNow,
+      });
       res.json({ token: token, user: user });
     }
   } catch (error) {

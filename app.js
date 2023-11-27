@@ -28,6 +28,14 @@ const Task = mongoose.model("Task", {
   status: String,
 });
 
+// Create an array of around 50 dummy tasks
+const dummyTasks = Array.from({ length: 50 }, (_, index) => ({
+  taskName: `Task ${index + 1}`,
+  description: `Description for Task ${index + 1}`,
+  dueDate: new Date(`2023-11-${index + 1}`),
+  status: index % 2 === 0 ? "Incomplete" : "Complete",
+}));
+
 // creating a user model
 const User = mongoose.model("User", {
   username: { type: String, unique: true },
@@ -64,7 +72,8 @@ app.post("/login", async (req, res) => {
     if (user) {
       const token = jwt.sign(
         { id: user._id, username: user.username },
-        secretKey
+        secretKey,
+        { expiresIn: "30d" }
       );
       const oneHourFromNow = new Date(Date.now() + 3600000); // 3600000 milliseconds = 1 hour
 
@@ -111,11 +120,16 @@ app.get("/logout", authenticateToken, (req, res) => {
 
 //getting all data from api......
 app.get("/task", authenticateToken, async (req, res) => {
+  const pageNo = req.query.pageNo;
+  const Limit = req.query.Limit;
+
   try {
-    const tasks = await Task.find();
+    const tasks = await Task.find().skip(pageNo).limit(Limit);
     res.status(200).json({
       success: true,
-      message: "Tasks retrieved successfully",
+      Limit: Limit,
+      pageNo: pageNo,
+      message: "Tasks retrieved successfull",
       data: tasks,
     });
   } catch (error) {
@@ -139,6 +153,13 @@ app.get("/task/:TaskId", authenticateToken, async (req, res, next) => {
 
 //adding data to database......
 app.post("/taskadd", authenticateToken, async (req, res, next) => {
+  // let new_data = new Task({
+  //   taskName: "Task A",
+  //   description: "Description for Task A",
+  //   dueDate: "2023-12-31",
+  //   status: "Incomplete",
+  // });
+  // await new_data.save();
   try {
     const { taskName, description, dueDate, status } = req.body;
     const newTask = new Task({ taskName, description, dueDate, status });

@@ -10,6 +10,7 @@ const bodyParser = require("body-parser");
 const app = express();
 const TaskController = require("./controllers/TaskController");
 const UserController = require("./controllers/UserContoller");
+const CorsMiddleware = require("./CORS/CorsMiddleware");
 const Authentication = require("./Authentication/AuthenticationMiddleWare");
 //syntax of cookiee parser..
 app.use(cookieParser());
@@ -17,6 +18,9 @@ app.use(cookieParser());
 
 app.use(bodyParser.json());
 //handling route of home and sending some response based on that....
+
+app.use(CorsMiddleware.CorsMiddleware);
+
 app.get("/", (request, response) => {
   response.send({ message: "Hello from an Express API!" });
 });
